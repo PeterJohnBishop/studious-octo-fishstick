@@ -13,13 +13,13 @@ type Header struct {
 	Value string
 }
 
-func SendRequest(method string, headers []Header, url string, body *string) ([]byte, error) {
+func SendRequest(method string, headers []Header, url string, params []Params, body *string) ([]byte, error) {
 	var requestBody io.Reader
 	if body != nil {
 		requestBody = strings.NewReader(*body)
 	}
 
-	req, err := http.NewRequest(method, url, requestBody)
+	req, err := http.NewRequest(method, url+BuildQueryString(params), requestBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
