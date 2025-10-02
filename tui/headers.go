@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"studious-octo-fishstick/api"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -8,15 +10,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type Header struct {
-	Key   string
-	Value string
-}
-
 type HeaderModel struct {
 	keyInput   textinput.Model
 	valueInput textinput.Model
-	headers    []Header
+	headers    []api.Header
 	list       list.Model
 	focusIndex int
 	selected   int
@@ -80,7 +77,7 @@ func (m HeaderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case msg.Type == tea.KeyEnter:
 			if m.keyInput.Value() != "" && m.valueInput.Value() != "" {
-				h := Header{Key: m.keyInput.Value(), Value: m.valueInput.Value()}
+				h := api.Header{Key: m.keyInput.Value(), Value: m.valueInput.Value()}
 				m.headers = append(m.headers, h)
 				m.list.InsertItem(len(m.headers)-1, headerItem(h))
 
@@ -142,7 +139,7 @@ func (m HeaderModel) View() string {
 	return border
 }
 
-type headerItem Header
+type headerItem api.Header
 
 func (h headerItem) FilterValue() string { return h.Key }
 func (h headerItem) Title() string       { return h.Key }

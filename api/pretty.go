@@ -5,18 +5,17 @@ import (
 	"fmt"
 )
 
-func PrettyPrintJSON(data []byte) error {
+func PrettyPrintJSON(data []byte) string {
 	var obj interface{}
 
 	if err := json.Unmarshal(data, &obj); err != nil {
-		return fmt.Errorf("invalid JSON: %w", err)
+		return fmt.Sprintf("invalid JSON: %v", err)
 	}
 
 	formatted, err := json.MarshalIndent(obj, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to format JSON: %w", err)
+		return fmt.Sprintf("failed to format JSON: %v", err)
 	}
 
-	fmt.Println(string(formatted))
-	return nil
+	return string(formatted)
 }

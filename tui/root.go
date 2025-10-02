@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"studious-octo-fishstick/api"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -15,7 +17,7 @@ type Root struct {
 	headers  HeaderModel
 	endpoint EndpointModel
 	body     BodyModel
-	response ResponseModel
+	response *ResponseModel
 	active   int
 }
 
@@ -23,6 +25,24 @@ type PreviousModelMsg struct{}
 type NextModelMsg struct{}
 type SendRequestMsg struct{}
 type ResetMsg struct{}
+type ResponseMsg struct {
+	response string
+	err      string
+}
+
+func doRequest(method string, headers []api.Header, endpoint string, params []api.Params, body string) tea.Cmd {
+	return func() tea.Msg {
+		resp, err := api.SendRequest(method, headers, endpoint, params, &body)
+		if err != nil {
+			return ResponseMsg{response: "", err: err.Error()}
+		}
+
+		pretty := api.PrettyPrintJSON(resp)
+		// fmt.Println("DEBUG pretty:", pretty) // 👈 confirm we actually have JSON
+
+		return ResponseMsg{response: pretty, err: ""}
+	}
+}
 
 func InitialRootModel() Root {
 	return Root{
@@ -55,7 +75,31 @@ func (m Root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case NextModelMsg:
 		m.active = (m.active + 1) % 5
 		return m, nil
+	case SendRequestMsg:
+		var method string = m.method.methods[m.method.cursor]
+		var headers []api.Header = m.headers.headers
+		var endpoint string = m.endpoint.endpoint.Value()
+		var params []api.Params = m.endpoint.params
+		var body string = m.body.textarea.Value()
 
+		m.active = 4
+		m.response.errMessage = ""
+		m.response.response = ""
+		m.response.loading = true
+		return m, doRequest(method, headers, endpoint, params, body)
+
+	case ResponseMsg:
+		updated, cmd := m.response.Update(msg)
+		m.response = updated.(*ResponseModel)
+		return m, cmd
+	case ResetMsg:
+		m.method = InitialMethodModel()
+		m.headers = InitialHeaderModel()
+		m.endpoint = InitialEndpointModel()
+		m.body = InitialBodyModel()
+		m.response = InitialResponseModel()
+		m.active = 0
+		return m, nil
 	}
 
 	var updated tea.Model
@@ -76,7 +120,7 @@ func (m Root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.body = updated.(BodyModel)
 	case 4: // response
 		updated, cmd = m.response.Update(msg)
-		m.response = updated.(ResponseModel)
+		m.response = updated.(*ResponseModel)
 	}
 
 	if cmd != nil {
