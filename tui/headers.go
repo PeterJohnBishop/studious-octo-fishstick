@@ -1,12 +1,11 @@
 package tui
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type Header struct {
@@ -60,9 +59,25 @@ func (m HeaderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			if m.keyInput.Focused() {
+				m.keyInput.Blur()
+				m.valueInput.Focus()
+			} else {
+				m.valueInput.Blur()
+				m.keyInput.Focus()
+			}
+		case "tab":
+			return m, func() tea.Msg {
+				return NextModelMsg{}
+			}
+		case "shift+tab":
+			return m, func() tea.Msg {
+				return PreviousModelMsg{}
+			}
+		}
 		switch {
-
-		// Submit header
 		case msg.Type == tea.KeyEnter:
 			if m.keyInput.Value() != "" && m.valueInput.Value() != "" {
 				h := Header{Key: m.keyInput.Value(), Value: m.valueInput.Value()}
@@ -73,30 +88,20 @@ func (m HeaderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.keyInput.SetValue("")
 				m.valueInput.SetValue("")
 				m.keyInput.Focus()
+				m.valueInput.Blur()
 			}
 
-		// Navigate list
 		case msg.Type == tea.KeyDown:
 			if len(m.headers) > 0 {
 				m.showList = true
 				m.list, _ = m.list.Update(msg)
 			}
 
-		// Delete selected header
 		case key.Matches(msg, key.NewBinding(key.WithKeys("ctrl+d"))):
 			if i := m.list.Index(); i >= 0 && i < len(m.headers) {
 				m.headers = append(m.headers[:i], m.headers[i+1:]...)
 				m.list.RemoveItem(i)
 			}
-
-		// Save
-		case key.Matches(msg, key.NewBinding(key.WithKeys("ctrl+s"))):
-			fmt.Println("Saving headers:", m.headers)
-			return m, tea.Quit
-
-		// Quit
-		case key.Matches(msg, key.NewBinding(key.WithKeys("ctrl+c"))):
-			return m, tea.Quit
 		}
 
 	case tea.WindowSizeMsg:
@@ -105,13 +110,11 @@ func (m HeaderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Update text inputs
 	var cmd tea.Cmd
-	if m.keyInput.Focused() {
-		m.keyInput, cmd = m.keyInput.Update(msg)
-		cmds = append(cmds, cmd)
-	} else {
-		m.valueInput, cmd = m.valueInput.Update(msg)
-		cmds = append(cmds, cmd)
-	}
+	m.keyInput, cmd = m.keyInput.Update(msg)
+	cmds = append(cmds, cmd)
+
+	m.valueInput, cmd = m.valueInput.Update(msg)
+	cmds = append(cmds, cmd)
 
 	// Always update list
 	m.list, cmd = m.list.Update(msg)
@@ -121,15 +124,22 @@ func (m HeaderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m HeaderModel) View() string {
-	s := "Enter Header Key/Value\n\n"
+	s := "Headers:\n\n"
 	s += m.keyInput.View() + " : " + m.valueInput.View()
-	s += "\n\nPress Enter to add, Ctrl+D to delete, Ctrl+S to save, Ctrl+C to quit.\n"
+	s += "\n\n[ Press Enter to add, Ctrl+D to delete header ].\n"
 
 	if len(m.headers) > 0 {
 		s += "\nHeaders:\n" + m.list.View()
 	}
 
-	return s
+	border := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Padding(1).
+		Width(55).
+		Height(20).
+		Render(s)
+
+	return border
 }
 
 type headerItem Header

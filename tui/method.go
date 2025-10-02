@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type MethodModel struct {
@@ -14,7 +15,7 @@ type MethodModel struct {
 
 func InitialMethodModel() MethodModel {
 	return MethodModel{
-		methods:  []string{"GET", "POST", "PUT", "DELETE"},
+		methods:  []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
 		selected: make(map[int]struct{}),
 	}
 }
@@ -30,9 +31,6 @@ func (m MethodModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.String() {
 
-		case "ctrl+c", "q":
-			return m, tea.Quit
-
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -44,12 +42,19 @@ func (m MethodModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter", " ":
-			_, ok := m.selected[m.cursor]
-			if ok {
+			if _, ok := m.selected[m.cursor]; ok {
 				delete(m.selected, m.cursor)
 			} else {
+				m.selected = make(map[int]struct{})
 				m.selected[m.cursor] = struct{}{}
-				// send SaveMethodMsg
+			}
+		case "tab":
+			return m, func() tea.Msg {
+				return NextModelMsg{}
+			}
+		case "Shift+tab":
+			return m, func() tea.Msg {
+				return PreviousModelMsg{}
 			}
 		}
 	}
@@ -59,7 +64,7 @@ func (m MethodModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m MethodModel) View() string {
 
-	s := ""
+	s := "Method:\n\n"
 
 	for i, choice := range m.methods {
 
@@ -76,5 +81,12 @@ func (m MethodModel) View() string {
 		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
 	}
 
-	return s
+	border := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Padding(1).
+		Width(55).
+		Height(20).
+		Render(s)
+
+	return border
 }
